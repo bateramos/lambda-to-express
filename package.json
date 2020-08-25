@@ -1,0 +1,40 @@
+{
+  "name": "lambda-to-express",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo 'we should have tests here'"
+  },
+  "bin": {
+    "lambda-to-express2": "./index.js",
+    "lambda-to-express": "./exec.sh"
+  },
+  "keywords": [
+    "express",
+    "lambda",
+    "aws",
+    "serverless",
+    "local"
+  ],
+  "author": "Pedro Ferreira Ramos",
+  "license": "ISC",
+  "dependencies": {
+    "@babel/core": "^7.11.4",
+    "@babel/node": "^7.10.5",
+    "@babel/preset-env": "^7.11.0",
+    "body-parser": "^1.19.0",
+    "cors": "^2.8.5",
+    "dotenv": "^8.2.0",
+    "enhanced-require": "^0.5.0-beta6",
+    "express": "^4.17.1",
+    "hbsfy": "^2.8.1",
+    "isomorphic-fetch": "^2.2.1",
+    "jsonwebtoken": "^8.5.1",
+    "jwk-to-pem": "^2.0.4",
+    "lodash": "^4.17.20",
+    "node-hook": "^1.0.0",
+    "nodemon": "^2.0.4",
+    "yaml": "^1.10.0"
+  }
+}
