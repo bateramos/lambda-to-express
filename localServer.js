@@ -12,12 +12,13 @@ import jwkToPem from 'jwk-to-pem'
 import bodyParser from 'body-parser'
 import hbsfy from 'hbsfy'
 
-const PORT = process.env.PORT
+const PORT = process.env.PORT || 8180
+
+const verifyPromised = promisify(jsonwebtoken.verify.bind(jsonwebtoken))
 
 const result = dotenv.config()
 
 const app = express()
-const verifyPromised = promisify(jsonwebtoken.verify.bind(jsonwebtoken))
 
 app.use(cors())
 app.use(bodyParser.json())
@@ -30,16 +31,17 @@ require.extensions['.hbs'] = function (module, filename) {
     return module._compile(hbsfy.compile(file, opts), filename);
 }
 
-async function securityCheck(token) {
-    const cognitoPoolId = process.env.STACK_COGNITO_USER_POOL_ID
-    const cognitoIssuer = `https://cognito-idp.eu-central-1.amazonaws.com/${cognitoPoolId}`
-    const url = `${cognitoIssuer}/.well-known/jwks.json`
-    const publicKeys = await fetch(url).then(res => res.json())
-    cacheKeys = publicKeys.keys.reduce((agg, current) => {
-        const pem = jwkToPem(current)
-        agg[current.kid] = {instance: current, pem}
-        return agg
-    }, [])
+async function securityCheck(token, mainConfig) {
+    if (!cacheKeys.length) {
+        const cognitoIssuer = `https://cognito-idp.${mainConfig.AWS_REGION}.amazonaws.com/${mainConfig.COGNITO_POOL_ID}`
+        const url = `${cognitoIssuer}/.well-known/jwks.json`
+        const publicKeys = await fetch(url).then(res => res.json())
+        cacheKeys = publicKeys.keys.reduce((agg, current) => {
+            const pem = jwkToPem(current)
+            agg[current.kid] = {instance: current, pem}
+            return agg
+        }, [])
+    }
 
     const tokenSections = (token || '').split('.')
     const headerJSON = Buffer.from(tokenSections[0], 'base64').toString('utf8')
@@ -50,8 +52,8 @@ async function securityCheck(token) {
     return claim
 }
 
-export default async function main(configFilesPath) {
-    configFilesPath.forEach(serverlessConfig => {
+export default async function main(serverlessConfigFilesPath, mainConfig) {
+    serverlessConfigFilesPath.forEach(serverlessConfig => {
         const mainPath = path.join(process.cwd(), serverlessConfig)
         const mainDir = path.dirname(mainPath)
         const relativePath = `../..${mainDir.replace(process.cwd(), '')}`
@@ -85,11 +87,11 @@ export default async function main(configFilesPath) {
                     const exportedFunction = f.handler.substring(f.handler.lastIndexOf('.') + 1)
                     const handler = require(relativePath + '/' + f.handler.replace(`.${exportedFunction}`, ''))[exportedFunction]
 
-                    console.log(handler.name, method, path)
+                    console.log(method, handler.name, path)
                     app[method]('/' + path.replace('{', ':').replace('}', ''), async (req, res) => {
                         if (isRouteCognitoAuthorizer) {
                             const authentication = get(req, 'headers.authorization')
-                            const securityCredentials = await securityCheck(authentication)
+                            const securityCredentials = await securityCheck(authentication, mainConfig)
 
                             set(req, 'requestContext.authorizer.claims', securityCredentials)
                         }
@@ -105,7 +107,6 @@ export default async function main(configFilesPath) {
                         req.body = JSON.stringify(req.body)
 
                         const response = await handler(req)
-                        console.log(response)
                         res.status(response.statusCode).send(response.body)
                     })
                 } catch (error) {
@@ -117,6 +118,6 @@ export default async function main(configFilesPath) {
     })
 
     app.listen(PORT, () => {
-        console.log(`Example app listening at http://localhost:${PORT}`)
+        console.log(`Lambda-to-express listening at http://localhost:${PORT}`)
     })
 }
