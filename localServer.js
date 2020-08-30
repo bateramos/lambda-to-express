@@ -1,19 +1,19 @@
-import 'isomorphic-fetch'
-import path from 'path'
-import {promisify} from 'util'
-import get from 'lodash/get'
-import set from 'lodash/set'
-import isArray from 'lodash/isArray'
-import orderBy from 'lodash/orderBy'
-import yaml from 'yaml'
-import fs from 'fs'
-import express from 'express'
-import cors from 'cors'
-import dotenv from 'dotenv'
-import * as jsonwebtoken from 'jsonwebtoken'
-import jwkToPem from 'jwk-to-pem'
-import bodyParser from 'body-parser'
-import hbsfy from 'hbsfy'
+require('isomorphic-fetch')
+const path  = require('path')
+const {promisify}  = require('util')
+const get  = require('lodash/get')
+const set  = require('lodash/set')
+const isArray  = require('lodash/isArray')
+const orderBy  = require('lodash/orderBy')
+const yaml  = require('yaml')
+const fs  = require('fs')
+const express  = require('express')
+const cors  = require('cors')
+const dotenv  = require('dotenv')
+const jsonwebtoken  = require('jsonwebtoken')
+const jwkToPem  = require('jwk-to-pem')
+const bodyParser  = require('body-parser')
+const hbsfy  = require('hbsfy')
 
 const logGreen = str => console.log(`\x1b[32m${str}\x1b[0m`)
 const logYellow = str => console.log(`\x1b[33m${str}\x1b[0m`)
@@ -58,7 +58,7 @@ async function securityCheck(token, mainConfig) {
     return claim
 }
 
-export default async function main(serverlessConfigFilesPath, mainConfig) {
+module.exports = async function main(serverlessConfigFilesPath, mainConfig) {
     serverlessConfigFilesPath.forEach(serverlessConfig => {
         const mainPath = path.join(process.cwd(), serverlessConfig)
         const mainDir = path.dirname(mainPath)

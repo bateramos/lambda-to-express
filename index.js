@@ -1,7 +1,7 @@
-import path from 'path'
-import fs from 'fs'
+const path = require('path')
+const fs = require('fs')
 
-import main from './localServer'
+const main = require('./localServer')
 
 const serverlessConfigToLoad = process.argv.filter((el, index) => index > 1)
 let mainConfig = {}
