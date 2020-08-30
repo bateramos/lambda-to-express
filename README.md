@@ -20,7 +20,7 @@ npm install -D lambda-to-express
 
 Inside package.json create a new entry on scripts
 ```sh
-serverless-to-lambda serverless.yaml
+lambda-to-express serverless.yaml
 ```
 This will instantiate a new express server with the http routes defined in your serverless yaml.
 This project will load and make available all variables inside your .env to the functions.
