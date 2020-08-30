@@ -1,7 +1,10 @@
 import 'isomorphic-fetch'
 import path from 'path'
 import {promisify} from 'util'
-import {get,set,isArray} from 'lodash'
+import get from 'lodash/get'
+import set from 'lodash/set'
+import isArray from 'lodash/isArray'
+import orderBy from 'lodash/orderBy'
 import yaml from 'yaml'
 import fs from 'fs'
 import express from 'express'
@@ -11,6 +14,9 @@ import * as jsonwebtoken from 'jsonwebtoken'
 import jwkToPem from 'jwk-to-pem'
 import bodyParser from 'body-parser'
 import hbsfy from 'hbsfy'
+
+const logGreen = str => console.log(`\x1b[32m${str}\x1b[0m`)
+const logYellow = str => console.log(`\x1b[33m${str}\x1b[0m`)
 
 const PORT = process.env.PORT || 8180
 
@@ -61,7 +67,7 @@ export default async function main(serverlessConfigFilesPath, mainConfig) {
         const mainLambdaFile = fs.readFileSync(mainPath, 'utf8')
         const parsedFile = yaml.parse(mainLambdaFile)
 
-        console.log(`loading ${serverlessConfig}`)
+        logGreen(`loading ${serverlessConfig}`)
 
         let functions = {}
 
@@ -74,6 +80,8 @@ export default async function main(serverlessConfigFilesPath, mainConfig) {
             functions = {...functions, ...parsedFile.functions}
         }
 
+        let handlerFunctions = []
+
         Object.values(functions)
             .filter(f => f.events)
             .filter(f => f.events.find(e => e.http))
@@ -83,41 +91,53 @@ export default async function main(serverlessConfigFilesPath, mainConfig) {
 
                 const isRouteCognitoAuthorizer = get(authorizer, 'type') === 'COGNITO_USER_POOLS'
 
-                try {
-                    const exportedFunction = f.handler.substring(f.handler.lastIndexOf('.') + 1)
-                    const handler = require(relativePath + '/' + f.handler.replace(`.${exportedFunction}`, ''))[exportedFunction]
+                const exportedFunction = f.handler.substring(f.handler.lastIndexOf('.') + 1)
 
-                    console.log(method, handler.name, path)
-                    app[method]('/' + path.replace('{', ':').replace('}', ''), async (req, res) => {
-                        if (isRouteCognitoAuthorizer) {
-                            const authentication = get(req, 'headers.authorization')
-                            const securityCredentials = await securityCheck(authentication, mainConfig)
-
-                            set(req, 'requestContext.authorizer.claims', securityCredentials)
-                        }
-
-                        if (req.query) {
-                            set(req, 'queryStringParameters', req.query)
-                        }
-
-                        if (req.params) {
-                            set(req, 'pathParameters', req.params)
-                        }
-
-                        req.body = JSON.stringify(req.body)
-
-                        const response = await handler(req)
-                        res.status(response.statusCode).send(response.body)
-                    })
-                } catch (error) {
-                    console.error('Error on function route configuration')
-                    console.log(method, path)
-                    console.log(error)
-                }
+                handlerFunctions.push({
+                    filePath: relativePath + '/' + f.handler.replace(`.${exportedFunction}`, ''),
+                    path: `/${path.replace('{', ':').replace('}', '')}`,
+                    exportedFunction,
+                    method,
+                    config: { isRouteCognitoAuthorizer },
+                })
             })
+
+        handlerFunctions = orderBy(handlerFunctions, ['path', 'method'], ['desc', 'asc'])
+
+        handlerFunctions.forEach(({ filePath, path, exportedFunction, method, config }) => {
+            try {
+                const handler = require(filePath)[exportedFunction]
+                logYellow(`> ${method.padEnd(8, ' ')} ${handler.name.padEnd(40, ' ')} ${path}`)
+                app[method](path, async (req, res) => {
+                    if (config.isRouteCognitoAuthorizer) {
+                        const authentication = get(req, 'headers.authorization')
+                        const securityCredentials = await securityCheck(authentication, mainConfig)
+
+                        set(req, 'requestContext.authorizer.claims', securityCredentials)
+                    }
+
+                    if (req.query) {
+                        set(req, 'queryStringParameters', req.query)
+                    }
+
+                    if (req.params) {
+                        set(req, 'pathParameters', req.params)
+                    }
+
+                    req.body = JSON.stringify(req.body)
+
+                    const response = await handler(req)
+                    res.status(response.statusCode).send(response.body)
+                })
+            } catch (error) {
+                console.error('Error on function route configuration')
+                console.log(method, path)
+                console.log(error)
+            }
+        })
     })
 
     app.listen(PORT, () => {
-        console.log(`Lambda-to-express listening at http://localhost:${PORT}`)
+        logGreen(`Lambda-to-express listening at http://localhost:${PORT}`)
     })
 }
