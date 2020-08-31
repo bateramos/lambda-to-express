@@ -18,4 +18,12 @@ try {
     }
 }
 
+if (mainConfig.PRE_RUNNER) {
+    try {
+        require(`${process.cwd()}/${mainConfig.PRE_RUNNER}`)
+    } catch (error) {
+        console.warn(`Error on loading ${process.cwd()}/${mainConfig.PRE_RUNNER}`, error)
+    }
+}
+
 main(serverlessConfigToLoad, mainConfig)

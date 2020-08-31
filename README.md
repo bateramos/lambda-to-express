@@ -1,3 +1,9 @@
+# Requirements Needed
+
+The main goal of this project is to provide an easy and non-intrusive way to run serverless locally.
+But for us to accomplish this we need more requirements from different projects using serverless.
+If you feel inclined please create a new issue if your project needs.
+
 ## About The Project
 
 Run your lambda functions locally as express endpoints.
@@ -27,10 +33,13 @@ This project will load and make available all variables inside your .env to the 
 
 To use COGNITO authorizer you need to create a json file called .lterc in the root of your project with the following format:
 
+You can as well execute a preRunner to register any file compiler like handlebars.
+
 ```json
 {
-    "AWS_REGION": "...",
-    "COGNITO_POOL_ID": "..."
+    "AWS_REGION": "...",      // necessary for Cognito authorizer
+    "COGNITO_POOL_ID": "...", // necessary for Cognito authorizer
+    "PRE_RUNNER": "..."       // path to js file to be executed before routes
 }
 ```
 

@@ -13,7 +13,6 @@ const dotenv  = require('dotenv')
 const jsonwebtoken  = require('jsonwebtoken')
 const jwkToPem  = require('jwk-to-pem')
 const bodyParser  = require('body-parser')
-const hbsfy  = require('hbsfy')
 
 const logGreen = str => console.log(`\x1b[32m${str}\x1b[0m`)
 const logYellow = str => console.log(`\x1b[33m${str}\x1b[0m`)
@@ -30,12 +29,6 @@ app.use(cors())
 app.use(bodyParser.json())
 
 let cacheKeys = []
-
-require.extensions['.hbs'] = function (module, filename) {
-    var file = fs.readFileSync(filename, "utf8");
-    var opts = { traverse: true };
-    return module._compile(hbsfy.compile(file, opts), filename);
-}
 
 async function securityCheck(token, mainConfig) {
     if (!cacheKeys.length) {
