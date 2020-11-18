@@ -1,0 +1,29 @@
+
+functions:
+    getHandler:
+        handler: minimal-all-http-methods-routes.getHandler
+        events:
+            - http:
+                path: minimal/route
+                method: get
+
+    postHandler:
+        handler: minimal-all-http-methods-routes.postHandler
+        events:
+            - http:
+                path: minimal/route
+                method: post
+
+    putHandler:
+        handler: minimal-all-http-methods-routes.putHandler
+        events:
+            - http:
+                path: minimal/route
+                method: put
+
+    deleteHandler:
+        handler: minimal-all-http-methods-routes.deleteHandler
+        events:
+            - http:
+                path: minimal/route
+                method: delete

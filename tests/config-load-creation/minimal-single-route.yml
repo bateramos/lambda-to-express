@@ -1,0 +1,9 @@
+
+functions:
+    test:
+        handler: minimal-single-route.handler
+        events:
+            - http:
+                path: minimal/single/route
+                method: get
+

@@ -1,4 +1,5 @@
 require('isomorphic-fetch')
+
 const path  = require('path')
 const {promisify}  = require('util')
 const get  = require('lodash/get')
@@ -18,6 +19,7 @@ const logGreen = str => console.log(`\x1b[32m${str}\x1b[0m`)
 const logYellow = str => console.log(`\x1b[33m${str}\x1b[0m`)
 
 const PORT = process.env.PORT || 8180
+const ABSOLUTE_CONFIG_PATH = process.env.ABSOLUTE_CONFIG_PATH || false
 
 const verifyPromised = promisify(jsonwebtoken.verify.bind(jsonwebtoken))
 
@@ -51,11 +53,11 @@ async function securityCheck(token, mainConfig) {
     return claim
 }
 
-module.exports = async function main(serverlessConfigFilesPath, mainConfig) {
+module.exports = function main(serverlessConfigFilesPath, mainConfig) {
     serverlessConfigFilesPath.forEach(serverlessConfig => {
         const mainPath = path.join(process.cwd(), serverlessConfig)
         const mainDir = path.dirname(mainPath)
-        const relativePath = `../..${mainDir.replace(process.cwd(), '')}`
+        const relativePath = `${ABSOLUTE_CONFIG_PATH ? '.' : '../..'}${mainDir.replace(process.cwd(), '')}`
 
         const mainLambdaFile = fs.readFileSync(mainPath, 'utf8')
         const parsedFile = yaml.parse(mainLambdaFile)
@@ -73,12 +75,10 @@ module.exports = async function main(serverlessConfigFilesPath, mainConfig) {
             functions = {...functions, ...parsedFile.functions}
         }
 
-        let handlerFunctions = []
-
-        Object.values(functions)
+        let handlerFunctions = Object.values(functions)
             .filter(f => f.events)
             .filter(f => f.events.find(e => e.http))
-            .forEach(f => {
+            .map(f => {
                 const event = f.events[0].http
                 const {path, method, authorizer} = event
 
@@ -86,13 +86,13 @@ module.exports = async function main(serverlessConfigFilesPath, mainConfig) {
 
                 const exportedFunction = f.handler.substring(f.handler.lastIndexOf('.') + 1)
 
-                handlerFunctions.push({
+                return {
                     filePath: relativePath + '/' + f.handler.replace(`.${exportedFunction}`, ''),
                     path: `/${path.replace('{', ':').replace('}', '')}`,
                     exportedFunction,
                     method,
                     config: { isRouteCognitoAuthorizer },
-                })
+                }
             })
 
         handlerFunctions = orderBy(handlerFunctions, ['path', 'method'], ['desc', 'asc'])
@@ -119,8 +119,15 @@ module.exports = async function main(serverlessConfigFilesPath, mainConfig) {
 
                     req.body = JSON.stringify(req.body)
 
-                    const response = await handler(req)
-                    res.status(response.statusCode).send(response.body)
+                    try {
+                        const response = await handler(req)
+
+                        res.set(response.headers || {})
+
+                        res.status(response.statusCode || 200).send(response.body)
+                    } catch (error) {
+                        console.error(error)
+                    }
                 })
             } catch (error) {
                 console.error('Error on function route configuration')
@@ -130,7 +137,7 @@ module.exports = async function main(serverlessConfigFilesPath, mainConfig) {
         })
     })
 
-    app.listen(PORT, () => {
+    return app.listen(PORT, () => {
         logGreen(`Lambda-to-express listening at http://localhost:${PORT}`)
     })
 }
